@@ -1,0 +1,194 @@
+<!-- templates/view_instrument.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">{{ instrument.symbol }}</h1>
+            <div class="space-x-2">
+                <a href="{{ url_for('market', fy_token=instrument.fy_token) }}"
+                   class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded">
+                    View Market Data
+                </a>
+                <a href="{{ url_for('browse_instruments', exchange_code=instrument.exchange + '_' + instrument.segment) }}"
+                   class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded">
+                    Back to List
+                </a>
+            </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <div>
+                <h2 class="text-lg font-semibold mb-4">Instrument Details</h2>
+                <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Symbol</div>
+                        <div class="text-sm">{{ instrument.symbol }}</div>
+                    </div>
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Name</div>
+                        <div class="text-sm">{{ instrument.name }}</div>
+                    </div>
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Exchange</div>
+                        <div class="text-sm">{{ instrument.exchange }}</div>
+                    </div>
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Segment</div>
+                        <div class="text-sm">{{ instrument.segment }}</div>
+                    </div>
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">ISIN</div>
+                        <div class="text-sm">{{ instrument.isin or '-' }}</div>
+                    </div>
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Fyers Token</div>
+                        <div class="text-sm">{{ instrument.fy_token }}</div>
+                    </div>
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Instrument Type</div>
+                        <div class="text-sm">{{ instrument.instrument_type }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold mb-4">Trading Information</h2>
+                <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Lot Size</div>
+                        <div class="text-sm">{{ instrument.lot_size }}</div>
+                    </div>
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Tick Size</div>
+                        <div class="text-sm">{{ instrument.tick_size }}</div>
+                    </div>
+                    {% if instrument.expiry_date %}
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Expiry Date</div>
+                        <div class="text-sm">{{ instrument.expiry_date.strftime('%d-%b-%Y') }}</div>
+                    </div>
+                    {% endif %}
+                    {% if instrument.strike_price %}
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Strike Price</div>
+                        <div class="text-sm">₹{{ instrument.strike_price }}</div>
+                    </div>
+                    {% endif %}
+                    {% if instrument.option_type and instrument.option_type != 'XX' %}
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Option Type</div>
+                        <div class="text-sm">{{ instrument.option_type }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="grid grid-cols-2">
+                        <div class="text-sm font-medium text-gray-500">Last Updated</div>
+                        <div class="text-sm">{{ instrument.last_updated.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- templates/view_instrument.html (updated market data section) -->
+        {% if market_data %}
+        <div class="mt-6">
+            <h2 class="text-lg font-semibold mb-4">Market Data</h2>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    {% if market_data.v and market_data.v.lp is defined %}
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-500">Current Price</h3>
+                            <p class="text-2xl font-bold {% if market_data.v.lp > market_data.v.prev_close_price %}text-green-600{% elif market_data.v.lp < market_data.v.prev_close_price %}text-red-600{% else %}text-gray-900{% endif %}">
+                                ₹{{ market_data.v.lp }}
+                            </p>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-500">Change</h3>
+                            <p class="text-2xl font-bold {% if market_data.v.ch > 0 %}text-green-600{% elif market_data.v.ch < 0 %}text-red-600{% else %}text-gray-900{% endif %}">
+                                {{ market_data.v.ch }} ({{ market_data.v.chp }}%)
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-4">
+                        <div>
+                            <h3 class="text-xs font-medium text-gray-500">Open</h3>
+                            <p class="text-sm font-semibold">₹{{ market_data.v.open_price }}</p>
+                        </div>
+                        <div>
+                            <h3 class="text-xs font-medium text-gray-500">High</h3>
+                            <p class="text-sm font-semibold">₹{{ market_data.v.high_price }}</p>
+                        </div>
+                        <div>
+                            <h3 class="text-xs font-medium text-gray-500">Low</h3>
+                            <p class="text-sm font-semibold">₹{{ market_data.v.low_price }}</p>
+                        </div>
+                        <div>
+                            <h3 class="text-xs font-medium text-gray-500">Prev Close</h3>
+                            <p class="text-sm font-semibold">₹{{ market_data.v.prev_close_price }}</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="py-4 text-center">
+                        <p class="text-gray-500">Detailed price information not available</p>
+                    </div>
+
+                    {% if market_data.s %}
+                    <div class="mt-2 p-3 bg-blue-50 rounded-md">
+                        <p class="text-sm text-blue-600">Symbol: {{ market_data.s }}</p>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    {% if market_data.v %}
+                    <div class="grid grid-cols-2 gap-4">
+                        {% if market_data.v.volume is defined %}
+                        <div>
+                            <h3 class="text-xs font-medium text-gray-500">Volume</h3>
+                            <p class="text-sm font-semibold">{{ market_data.v.volume }}</p>
+                        </div>
+                        {% endif %}
+
+                        {% if market_data.v.tt is defined %}
+                        <div>
+                            <h3 class="text-xs font-medium text-gray-500">Timestamp</h3>
+                            <p class="text-sm font-semibold">{{ market_data.v.tt }}</p>
+                        </div>
+                        {% endif %}
+
+                        {% if market_data.v.yh is defined %}
+                        <div>
+                            <h3 class="text-xs font-medium text-gray-500">52-Week High</h3>
+                            <p class="text-sm font-semibold">₹{{ market_data.v.yh }}</p>
+                        </div>
+                        {% endif %}
+
+                        {% if market_data.v.yl is defined %}
+                        <div>
+                            <h3 class="text-xs font-medium text-gray-500">52-Week Low</h3>
+                            <p class="text-sm font-semibold">₹{{ market_data.v.yl }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="py-4 text-center">
+                        <p class="text-gray-500">Additional market data not available</p>
+                    </div>
+
+                    <div class="mt-4">
+                        <a href="{{ url_for('market', fy_token=instrument.fy_token) }}"
+                           class="inline-block bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm">
+                            Try View in Market Page
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

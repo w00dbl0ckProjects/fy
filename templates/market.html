@@ -1,0 +1,267 @@
+<!-- templates/market.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">Market Data</h1>
+            <a href="{{ url_for('market_live', fy_token=request.args.get('fy_token'), symbol=request.args.get('symbol')) }}"
+               class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded">
+                Live Charts
+            </a>
+            <a href="{{ url_for('instruments') }}" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
+                Browse Instruments
+            </a>
+        </div>
+
+        <!-- Symbol Search -->
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold mb-2">Search Instrument</h2>
+            <div class="relative">
+                <input type="text" id="instrument-search" placeholder="Search by symbol or name"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <div id="search-results"
+                     class="absolute z-10 w-full mt-1 bg-white shadow-lg rounded-md border border-gray-300 hidden"></div>
+            </div>
+
+            {% if popular_instruments %}
+            <div class="mt-2">
+                <span class="text-sm text-gray-500">Popular:</span>
+                {% for instr in popular_instruments %}
+                <a href="{{ url_for('market', fy_token=instr.fy_token) }}"
+                   class="inline-block text-sm text-blue-600 hover:underline ml-2">{{ instr.symbol }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- templates/market.html (updated market data section) -->
+        {% if market_data %}
+        <div class="mb-4">
+            <div class="text-sm text-gray-500">Currently viewing:</div>
+            <div class="flex items-center">
+                <h2 class="text-xl font-semibold">
+                    {% if instrument %}
+                    {{ instrument.symbol }} - {{ instrument.name }}
+                    {% else %}
+                    {{ market_data.n }}
+                    {% endif %}
+                </h2>
+                {% if instrument %}
+                <span class="ml-2 px-2 py-0.5 text-xs bg-gray-200 rounded-full">{{ instrument.exchange }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h2 class="text-lg font-semibold mb-4">Price Information</h2>
+
+                {% if market_data.v and market_data.v.lp is defined %}
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Current Price</h3>
+                        <p class="text-2xl font-bold {% if market_data.v.lp > market_data.v.prev_close_price %}text-green-600{% elif market_data.v.lp < market_data.v.prev_close_price %}text-red-600{% else %}text-gray-900{% endif %}">
+                            ₹{{ market_data.v.lp }}
+                        </p>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Change</h3>
+                        <p class="text-2xl font-bold {% if market_data.v.ch > 0 %}text-green-600{% elif market_data.v.ch < 0 %}text-red-600{% else %}text-gray-900{% endif %}">
+                            {{ market_data.v.ch }} ({{ market_data.v.chp }}%)
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-4 gap-4">
+                    <div>
+                        <h3 class="text-xs font-medium text-gray-500">Open</h3>
+                        <p class="text-sm font-semibold">₹{{ market_data.v.open_price }}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-medium text-gray-500">High</h3>
+                        <p class="text-sm font-semibold">₹{{ market_data.v.high_price }}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-medium text-gray-500">Low</h3>
+                        <p class="text-sm font-semibold">₹{{ market_data.v.low_price }}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-medium text-gray-500">Prev Close</h3>
+                        <p class="text-sm font-semibold">₹{{ market_data.v.prev_close_price }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="py-4 text-center">
+                    <p class="text-gray-500">Detailed price information not available</p>
+                </div>
+
+                {% if market_data.s %}
+                <div class="mt-2 p-3 bg-blue-50 rounded-md">
+                    <p class="text-sm text-blue-600">Symbol: {{ market_data.s }}</p>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h2 class="text-lg font-semibold mb-4">Trading Information</h2>
+
+                {% if market_data.v %}
+                <div class="grid grid-cols-2 gap-4">
+                    {% if market_data.v.volume is defined %}
+                    <div>
+                        <h3 class="text-xs font-medium text-gray-500">Volume</h3>
+                        <p class="text-sm font-semibold">{{ market_data.v.volume }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if market_data.v.tt is defined %}
+                    <div>
+                        <h3 class="text-xs font-medium text-gray-500">Timestamp</h3>
+                        <p class="text-sm font-semibold">{{ market_data.v.tt }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if market_data.v.yh is defined %}
+                    <div>
+                        <h3 class="text-xs font-medium text-gray-500">52-Week High</h3>
+                        <p class="text-sm font-semibold">₹{{ market_data.v.yh }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if market_data.v.yl is defined %}
+                    <div>
+                        <h3 class="text-xs font-medium text-gray-500">52-Week Low</h3>
+                        <p class="text-sm font-semibold">₹{{ market_data.v.yl }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="py-4 text-center">
+                    <p class="text-gray-500">Additional market data not available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if market_data.v and market_data.v.market_depth is defined %}
+        <div class="mt-6">
+            <h2 class="text-lg font-semibold mb-4">Market Depth</h2>
+            <div class="flex">
+                <div class="w-1/2 pr-2">
+                    <h3 class="text-sm font-medium text-green-600 mb-2">Buy Orders</h3>
+                    <table class="w-full border-collapse">
+                        <thead class="bg-gray-50">
+                        <tr>
+                            <th class="text-xs font-medium text-gray-500 px-2 py-1 border border-gray-200">Price</th>
+                            <th class="text-xs font-medium text-gray-500 px-2 py-1 border border-gray-200">Qty</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for depth in market_data.v.market_depth.buy %}
+                        <tr>
+                            <td class="text-sm text-green-600 px-2 py-1 border border-gray-200">₹{{ depth.price }}</td>
+                            <td class="text-sm px-2 py-1 border border-gray-200">{{ depth.qty }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="w-1/2 pl-2">
+                    <h3 class="text-sm font-medium text-red-600 mb-2">Sell Orders</h3>
+                    <table class="w-full border-collapse">
+                        <thead class="bg-gray-50">
+                        <tr>
+                            <th class="text-xs font-medium text-gray-500 px-2 py-1 border border-gray-200">Price</th>
+                            <th class="text-xs font-medium text-gray-500 px-2 py-1 border border-gray-200">Qty</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for depth in market_data.v.market_depth.sell %}
+                        <tr>
+                            <td class="text-sm text-red-600 px-2 py-1 border border-gray-200">₹{{ depth.price }}</td>
+                            <td class="text-sm px-2 py-1 border border-gray-200">{{ depth.qty }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="text-center py-10">
+            <p class="text-gray-500">Market data not available for the selected symbol.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('instrument-search');
+        const resultsDiv = document.getElementById('search-results');
+
+        searchInput.addEventListener('input', debounce(function() {
+            const query = searchInput.value.trim();
+            if (query.length < 2) {
+                resultsDiv.innerHTML = '';
+                resultsDiv.classList.add('hidden');
+                return;
+            }
+
+            fetch(`/api/search_instruments?q=${encodeURIComponent(query)}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        resultsDiv.innerHTML = '<p class="p-3 text-sm text-gray-500">No results found</p>';
+                    } else {
+                        let html = '';
+                        data.forEach(item => {
+                            html += `<a href="/market?fy_token=${item.fy_token}" class="block p-3 hover:bg-blue-50 border-b border-gray-200 text-sm">
+                                        <div class="font-semibold">${item.symbol}</div>
+                                        <div class="text-xs text-gray-500">${item.name || ''} (${item.exchange})</div>
+                                    </a>`;
+                        });
+                        resultsDiv.innerHTML = html;
+                    }
+                    resultsDiv.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error fetching search results:', error);
+                    resultsDiv.innerHTML = '<p class="p-3 text-sm text-red-500">Error fetching results</p>';
+                    resultsDiv.classList.remove('hidden');
+                });
+        }, 300));
+
+        // Hide results when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!searchInput.contains(event.target) && !resultsDiv.contains(event.target)) {
+                resultsDiv.classList.add('hidden');
+            }
+        });
+
+        // Show results when focusing on search input
+        searchInput.addEventListener('focus', function() {
+            if (searchInput.value.trim().length >= 2 && resultsDiv.innerHTML) {
+                resultsDiv.classList.remove('hidden');
+            }
+        });
+
+        // Debounce function to limit API calls
+        function debounce(func, wait) {
+            let timeout;
+            return function() {
+                const context = this;
+                const args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    func.apply(context, args);
+                }, wait);
+            };
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,20 @@
+<!-- templates/connect_fyers.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center h-[70vh]">
+    <div class="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
+        <div class="mb-6">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+        </div>
+        <h1 class="text-2xl font-bold mb-4">Connecting to Fyers</h1>
+        <p class="text-gray-600 mb-6">
+            You'll be redirected to the Fyers authentication page.
+            Please log in to your Fyers account and authorize the connection.
+        </p>
+        <div class="text-sm text-gray-500">
+            If you're not redirected automatically, please check if pop-ups are blocked by your browser.
+        </div>
+    </div>
+</div>
+{% endblock %}

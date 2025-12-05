@@ -1,0 +1,340 @@
+<!-- templates/instruments.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h1 class="text-2xl font-bold mb-4">Search All Instruments</h1>
+        <div class="relative">
+            <input type="text" id="global-search" placeholder="Enter symbol or name to search (minimum 2 characters)"
+                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <div id="loading-indicator" class="absolute right-3 top-2.5 hidden">
+                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+            </div>
+        </div>
+
+        <div id="search-status" class="mt-2 text-sm text-gray-500"></div>
+
+        <div id="search-results" class="mt-4"></div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Instrument Management</h2>
+            <button id="toggle-management" class="text-blue-600 hover:text-blue-800 text-sm">
+                <span id="toggle-text">Show Details</span>
+                <svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg"
+                     class="h-4 w-4 inline-block ml-1 transform transition-transform duration-200" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+        </div>
+
+        <div id="management-content" class="hidden">
+            <div class="mb-4">
+                <p class="text-gray-600 text-sm">
+                    Instruments are the tradable securities available on various exchanges. You can update the
+                    instrument
+                    lists to get the latest data or browse through them to see details and market information.
+                </p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                    <tr>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Exchange
+                        </th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Last Updated
+                        </th>
+                        <th class="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Instruments Count
+                        </th>
+                        <th class="px-6 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                    {% for exchange in exchanges %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {{ exchange.name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if exchange.last_updated %}
+                            {{ exchange.last_updated.strftime('%Y-%m-%d %H:%M:%S') }}
+                            {% else %}
+                            Never
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                            {{ exchange.count }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                            <div class="flex space-x-2 justify-center">
+                                <a href="{{ url_for('update_exchange_instruments', exchange_code=exchange.code) }}"
+                                   class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">
+                                    Update
+                                </a>
+                                <a href="{{ url_for('browse_instruments', exchange_code=exchange.code) }}"
+                                   class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
+                                    Browse
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Summary when collapsed -->
+        <div id="management-summary" class="text-sm text-gray-600">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {% for exchange in exchanges %}
+                <div class="bg-gray-50 p-3 rounded">
+                    <div class="font-medium text-xs text-gray-500 uppercase">{{ exchange.name }}</div>
+                    <div class="text-lg font-semibold">{{ exchange.count }}</div>
+                    <div class="text-xs text-gray-500">
+                        {% if exchange.last_updated %}
+                        Updated: {{ exchange.last_updated.strftime('%m/%d/%Y') }}
+                        {% else %}
+                        Never updated
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Search functionality
+        const searchInput = document.getElementById('global-search');
+        const resultsDiv = document.getElementById('search-results');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const statusDiv = document.getElementById('search-status');
+
+        let searchTimeout;
+        let currentRequest;
+
+        // Toggle functionality for Instrument Management
+        const toggleButton = document.getElementById('toggle-management');
+        const toggleText = document.getElementById('toggle-text');
+        const toggleIcon = document.getElementById('toggle-icon');
+        const managementContent = document.getElementById('management-content');
+        const managementSummary = document.getElementById('management-summary');
+
+        toggleButton.addEventListener('click', function() {
+            if (managementContent.classList.contains('hidden')) {
+                // Show details
+                managementContent.classList.remove('hidden');
+                managementSummary.classList.add('hidden');
+                toggleText.textContent = 'Hide Details';
+                toggleIcon.classList.add('rotate-180');
+            } else {
+                // Hide details
+                managementContent.classList.add('hidden');
+                managementSummary.classList.remove('hidden');
+                toggleText.textContent = 'Show Details';
+                toggleIcon.classList.remove('rotate-180');
+            }
+        });
+
+        // Auto-search as user types
+        searchInput.addEventListener('input', function() {
+            const query = searchInput.value.trim();
+
+            // Clear previous timeout
+            clearTimeout(searchTimeout);
+
+            // Cancel previous request if still pending
+            if (currentRequest) {
+                currentRequest.abort();
+            }
+
+            if (query.length < 2) {
+                resultsDiv.innerHTML = '';
+                statusDiv.textContent = '';
+                loadingIndicator.classList.add('hidden');
+                return;
+            }
+
+            statusDiv.textContent = `Searching for "${query}"...`;
+            loadingIndicator.classList.remove('hidden');
+
+            // Debounce the search to avoid too many API calls
+            searchTimeout = setTimeout(() => {
+                performSearch(query);
+            }, 300); // Wait 300ms after user stops typing
+        });
+
+        // Also allow Enter key for immediate search
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                const query = searchInput.value.trim();
+                if (query.length >= 2) {
+                    performSearch(query);
+                }
+            }
+        });
+
+        function performSearch(query) {
+            // Create AbortController for this request
+            const controller = new AbortController();
+            currentRequest = controller;
+
+            fetch(`/api/search_instruments?q=${encodeURIComponent(query)}&limit=50`, {
+                signal: controller.signal
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                loadingIndicator.classList.add('hidden');
+                currentRequest = null;
+
+                if (data.length === 0) {
+                    statusDiv.textContent = `No results found for "${query}"`;
+                    resultsDiv.innerHTML = '<div class="text-center py-8 text-gray-500">No instruments found matching your search.</div>';
+                    return;
+                }
+
+                statusDiv.textContent = `Found ${data.length} instrument${data.length === 1 ? '' : 's'} matching "${query}"`;
+
+                let html = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">';
+                html += '<thead><tr>';
+                html += '<th class="px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">Symbol</th>';
+                html += '<th class="px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">Name</th>';
+                html += '<th class="px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">Exchange</th>';
+                html += '<th class="px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">Segment</th>';
+                html += '<th class="px-4 py-2 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>';
+                html += '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+
+                data.forEach((item, index) => {
+                    const rowClass = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                    html += `<tr class="${rowClass} hover:bg-blue-50 transition-colors duration-150">`;
+                    html += `<td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${escapeHtml(item.symbol)}</td>`;
+                    html += `<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${escapeHtml(item.name || '-')}</td>`;
+                    html += `<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${escapeHtml(item.exchange)}</td>`;
+                    html += `<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${escapeHtml(getSegmentName(item.exchange))}</td>`;
+                    html += `<td class="px-4 py-3 whitespace-nowrap text-sm text-center">
+                              <div class="flex justify-center space-x-2">
+                                  <a href="/instruments/view/${item.fy_token}"
+                                     class="text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-150">View</a>
+                                  <span class="text-gray-300">|</span>
+                                  <a href="/market?fy_token=${item.fy_token}"
+                                     class="text-green-600 hover:text-green-800 hover:underline transition-colors duration-150">Market</a>
+                              </div>
+                            </td>`;
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table></div>';
+
+                // Add a "Show More" button if there might be more results
+                if (data.length === 50) {
+                    html += '<div class="mt-4 text-center">';
+                    html += '<p class="text-sm text-gray-500 mb-2">Showing first 50 results. Try a more specific search to narrow down results.</p>';
+                    html += '</div>';
+                }
+
+                resultsDiv.innerHTML = html;
+            })
+            .catch(error => {
+                currentRequest = null;
+                loadingIndicator.classList.add('hidden');
+
+                if (error.name === 'AbortError') {
+                    // Request was cancelled, ignore
+                    return;
+                }
+
+                console.error('Search error:', error);
+                statusDiv.textContent = `Error searching for "${query}"`;
+                resultsDiv.innerHTML = `<div class="text-center py-8 text-red-500">
+                                          <p>Error occurred while searching: ${escapeHtml(error.message)}</p>
+                                          <p class="text-sm mt-2">Please try again or contact support if the problem persists.</p>
+                                        </div>`;
+            });
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Helper function to get segment display name
+        function getSegmentName(exchange) {
+            // You can customize this based on your exchange codes
+            const segments = {
+                'NSE': 'National Stock Exchange',
+                'BSE': 'Bombay Stock Exchange',
+                'MCX': 'Multi Commodity Exchange'
+            };
+            return segments[exchange] || exchange;
+        }
+
+        // Clear results when input is focused and empty
+        searchInput.addEventListener('focus', function() {
+            if (this.value.trim().length === 0) {
+                resultsDiv.innerHTML = '';
+                statusDiv.textContent = '';
+            }
+        });
+    });
+</script>
+
+<style>
+    /* Add some custom styles for better UX */
+    .transition-colors {
+        transition-property: color, background-color, border-color;
+    }
+
+    .duration-150 {
+        transition-duration: 150ms;
+    }
+
+    /* Loading animation */
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .animate-spin {
+        animation: spin 1s linear infinite;
+    }
+
+    /* Toggle icon rotation */
+    .rotate-180 {
+        transform: rotate(180deg);
+    }
+
+    .transition-transform {
+        transition-property: transform;
+    }
+
+    .duration-200 {
+        transition-duration: 200ms;
+    }
+
+    /* Highlight search terms (optional enhancement) */
+    .search-highlight {
+        background-color: #fef3c7;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}

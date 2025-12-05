@@ -1,0 +1,384 @@
+<!-- templates/account.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Main Account Overview -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h1 class="text-2xl font-bold mb-6">Account Overview</h1>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- User Information -->
+            <div>
+                <h2 class="text-lg font-semibold mb-4">User Information</h2>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500">Username</label>
+                        <p class="text-lg">{{ user.username }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500">Email</label>
+                        <p class="text-lg">{{ user.email }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500">Account Created</label>
+                        <p class="text-lg">{{ user.created_at.strftime('%Y-%m-%d') }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fyers Connection -->
+            <div>
+                <h2 class="text-lg font-semibold mb-4">Fyers Connection</h2>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500">Client ID</label>
+                        <p class="text-lg">{{ credentials.client_id if credentials else 'Not set' }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500">Connection Status</label>
+                        {% if credentials and credentials.access_token %}
+                        <p class="text-green-600 font-medium">Connected</p>
+                        <p class="text-sm text-gray-500">Token expires on {{ credentials.token_expiry.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        {% else %}
+                        <p class="text-red-600 font-medium">Disconnected</p>
+                        {% endif %}
+                    </div>
+                    <div class="pt-2 flex space-x-2">
+                        <a href="{{ url_for('manage_credentials') }}"
+                           class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm">
+                            Manage Credentials
+                        </a>
+                        {% if credentials %}
+                        {% if credentials.access_token %}
+                        <a href="{{ url_for('connect_fyers') }}"
+                           class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded text-sm">
+                            Reconnect
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('connect_fyers') }}"
+                           class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded text-sm">
+                            Connect Fyers
+                        </a>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Status -->
+        <div class="mt-8 bg-yellow-50 border border-yellow-200 p-4 rounded-md">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-sm font-semibold text-yellow-800">Token Status</h3>
+                <button onclick="toggleTokenStatus()" class="text-yellow-600 hover:text-yellow-800 text-sm">
+                    <span id="token-toggle-text">Show Details</span>
+                    <svg id="token-toggle-icon" xmlns="http://www.w3.org/2000/svg"
+                         class="h-4 w-4 inline-block ml-1 transform transition-transform duration-200" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="token-status-content" class="hidden">
+                <div id="token-status" class="text-sm text-yellow-800 mb-2">
+                    <p>Checking token status...</p>
+                </div>
+                <button onclick="checkTokenStatus()" class="bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-3 rounded text-sm">
+                    Refresh Status
+                </button>
+            </div>
+
+            <!-- Summary when collapsed -->
+            <div id="token-status-summary" class="text-sm text-yellow-800">
+                <span id="token-summary-text">Click to view token status details</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collapsible Account Settings -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Account Settings</h2>
+            <button id="toggle-settings" onclick="toggleSettings()" class="text-blue-600 hover:text-blue-800 text-sm">
+                <span id="settings-toggle-text">Show Settings</span>
+                <svg id="settings-toggle-icon" xmlns="http://www.w3.org/2000/svg"
+                     class="h-4 w-4 inline-block ml-1 transform transition-transform duration-200" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Collapsed Summary -->
+        <div id="settings-summary" class="text-sm text-gray-600">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-gray-50 p-3 rounded">
+                    <div class="font-medium text-xs text-gray-500 uppercase">Account Type</div>
+                    <div class="text-lg font-semibold">Standard User</div>
+                </div>
+                <div class="bg-gray-50 p-3 rounded">
+                    <div class="font-medium text-xs text-gray-500 uppercase">Last Login</div>
+                    <div class="text-lg font-semibold">{{ user.created_at.strftime('%m/%d/%Y') }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Settings (Hidden by default) -->
+        <div id="settings-content" class="hidden">
+            <div class="space-y-6">
+                <!-- Profile Settings -->
+                <div class="border border-gray-200 rounded-md p-4">
+                    <h3 class="font-medium mb-4">Profile Settings</h3>
+                    <form method="post" action="/update-profile" class="space-y-4">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                                <input type="text" id="username" name="username" value="{{ user.username }}"
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                                <input type="email" id="email" name="email" value="{{ user.email }}"
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                        <div>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm">
+                                Update Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Preferences -->
+                <div class="border border-gray-200 rounded-md p-4">
+                    <h3 class="font-medium mb-4">Preferences</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-gray-700">Email Notifications</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-gray-700">Auto-refresh Data</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collapsible Account Security -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Account Security</h2>
+            <button id="toggle-security" onclick="toggleSecurity()" class="text-blue-600 hover:text-blue-800 text-sm">
+                <span id="security-toggle-text">Show Security</span>
+                <svg id="security-toggle-icon" xmlns="http://www.w3.org/2000/svg"
+                     class="h-4 w-4 inline-block ml-1 transform transition-transform duration-200" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Security Summary -->
+        <div id="security-summary" class="text-sm text-gray-600">
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center">
+                    <div class="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
+                    <span>Password Protected</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-3 h-3 bg-blue-400 rounded-full mr-2"></div>
+                    <span>Account Secure</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Content (Hidden by default) -->
+        <div id="security-content" class="hidden">
+            <div class="space-y-4">
+                <!-- Change Password -->
+                <div class="p-4 border border-gray-200 rounded-md">
+                    <h3 class="font-medium mb-2">Change Password</h3>
+                    <form method="post" action="/change-password" class="space-y-3">
+                        <div>
+                            <label for="current_password" class="block text-sm font-medium text-gray-700">Current Password</label>
+                            <input type="password" id="current_password" name="current_password" required
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <div>
+                            <label for="new_password" class="block text-sm font-medium text-gray-700">New Password</label>
+                            <input type="password" id="new_password" name="new_password" required
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <div>
+                            <label for="confirm_new_password" class="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                            <input type="password" id="confirm_new_password" name="confirm_new_password" required
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <div>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm">
+                                Update Password
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Security Options -->
+                <div class="p-4 border border-gray-200 rounded-md">
+                    <h3 class="font-medium mb-4">Security Options</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-sm font-medium text-gray-700">Two-Factor Authentication</span>
+                                <p class="text-xs text-gray-500">Add an extra layer of security</p>
+                            </div>
+                            <button class="bg-gray-200 text-gray-700 py-1 px-3 rounded text-sm">
+                                Enable
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-sm font-medium text-gray-700">Login Alerts</span>
+                                <p class="text-xs text-gray-500">Get notified of new logins</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Token Status Functions
+function toggleTokenStatus() {
+    const content = document.getElementById('token-status-content');
+    const summary = document.getElementById('token-status-summary');
+    const toggleText = document.getElementById('token-toggle-text');
+    const toggleIcon = document.getElementById('token-toggle-icon');
+
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        summary.classList.add('hidden');
+        toggleText.textContent = 'Hide Details';
+        toggleIcon.classList.add('rotate-180');
+        checkTokenStatus(); // Load status when showing
+    } else {
+        content.classList.add('hidden');
+        summary.classList.remove('hidden');
+        toggleText.textContent = 'Show Details';
+        toggleIcon.classList.remove('rotate-180');
+    }
+}
+
+function checkTokenStatus() {
+    const statusDiv = document.getElementById('token-status');
+    const summaryDiv = document.getElementById('token-summary-text');
+
+    statusDiv.innerHTML = '<p>Checking token status...</p>';
+
+    fetch('/check-token-status')
+        .then(response => response.json())
+        .then(data => {
+            let html = `
+                <p><strong>Token Valid:</strong> <span class="${data.valid ? 'text-green-600' : 'text-red-600'}">${data.valid ? 'Yes' : 'No'}</span></p>
+                <p><strong>Message:</strong> ${data.message}</p>
+                <p><strong>Has Credentials:</strong> ${data.has_credentials ? 'Yes' : 'No'}</p>
+                <p><strong>Has Token:</strong> ${data.has_token ? 'Yes' : 'No'}</p>
+            `;
+            if (data.token_expiry) {
+                html += `<p><strong>Token Expires:</strong> ${new Date(data.token_expiry).toLocaleString()}</p>`;
+            }
+            statusDiv.innerHTML = html;
+
+            // Update summary
+            summaryDiv.textContent = data.valid ? 'Token is valid and active' : 'Token issues detected - click to view';
+        })
+        .catch(error => {
+            statusDiv.innerHTML = `<p class="text-red-600">Error: ${error}</p>`;
+            summaryDiv.textContent = 'Error checking token status';
+        });
+}
+
+// Settings Toggle Functions
+function toggleSettings() {
+    const content = document.getElementById('settings-content');
+    const summary = document.getElementById('settings-summary');
+    const toggleText = document.getElementById('settings-toggle-text');
+    const toggleIcon = document.getElementById('settings-toggle-icon');
+
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        summary.classList.add('hidden');
+        toggleText.textContent = 'Hide Settings';
+        toggleIcon.classList.add('rotate-180');
+    } else {
+        content.classList.add('hidden');
+        summary.classList.remove('hidden');
+        toggleText.textContent = 'Show Settings';
+        toggleIcon.classList.remove('rotate-180');
+    }
+}
+
+// Security Toggle Functions
+function toggleSecurity() {
+    const content = document.getElementById('security-content');
+    const summary = document.getElementById('security-summary');
+    const toggleText = document.getElementById('security-toggle-text');
+    const toggleIcon = document.getElementById('security-toggle-icon');
+
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        summary.classList.add('hidden');
+        toggleText.textContent = 'Hide Security';
+        toggleIcon.classList.add('rotate-180');
+    } else {
+        content.classList.add('hidden');
+        summary.classList.remove('hidden');
+        toggleText.textContent = 'Show Security';
+        toggleIcon.classList.remove('rotate-180');
+    }
+}
+
+// Initialize token status check on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial summary for token status
+    document.getElementById('token-summary-text').textContent = 'Click to check token status';
+});
+</script>
+
+<style>
+.rotate-180 {
+    transform: rotate(180deg);
+}
+
+.transition-transform {
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+}
+
+/* Toggle switch styling */
+.peer:checked ~ .peer-checked\:bg-blue-600 {
+    background-color: #2563eb;
+}
+</style>
+{% endblock %}

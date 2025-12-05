@@ -1,0 +1,501 @@
+<!-- templates/holdings.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold">Holdings</h1>
+            <div class="flex items-center mt-2">
+                <div id="auto-refresh-indicator" class="flex items-center text-sm text-gray-500">
+                    <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                    <span>Auto-refreshing every 30 seconds</span>
+                </div>
+                <div id="last-updated" class="ml-4 text-sm text-gray-400">
+                    Last updated: <span id="update-time">{{ current_time }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="space-x-2">
+            <button id="manual-refresh" onclick="manualRefresh()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-200"
+                    title="Refresh now">
+                <svg id="refresh-icon" class="w-4 h-4 inline-block mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                          d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                          clip-rule="evenodd"></path>
+                </svg>
+                <span id="refresh-text">Refresh Now</span>
+            </button>
+            <a href="{{ url_for('dashboard') }}"
+               class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded transition duration-200">
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div id="holdings-content">
+        {% if holdings and holdings.holdings %}
+        <!-- Holdings Summary Cards -->
+        <div class="grid md:grid-cols-4 gap-6 mb-8">
+            {% set total_value = 0 %}
+            {% set total_pl = 0 %}
+            {% set total_holdings = holdings.holdings|length %}
+            {% set profitable_holdings = 0 %}
+
+            {% for holding in holdings.holdings %}
+            {% set total_value = total_value + (holding.ltp * holding.quantity) %}
+            {% set total_pl = total_pl + holding.pl %}
+            {% if holding.pl > 0 %}
+            {% set profitable_holdings = profitable_holdings + 1 %}
+            {% endif %}
+            {% endfor %}
+
+            <div class="bg-gradient-to-r from-blue-400 to-blue-600 p-6 rounded-xl text-white transform transition-all duration-300 hover:scale-105">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-medium opacity-90">Total Holdings</h3>
+                        <p class="text-2xl font-bold">{{ total_holdings }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                  d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 2h12v8H4V6z"
+                                  clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-green-400 to-green-600 p-6 rounded-xl text-white transform transition-all duration-300 hover:scale-105">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-medium opacity-90">Total Value</h3>
+                        <p class="text-2xl font-bold">₹{{ total_value|round(2) }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"></path>
+                            <path fill-rule="evenodd"
+                                  d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
+                                  clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-{% if total_pl >= 0 %}emerald-400 to-emerald-600{% else %}red-400 to-red-600{% endif %} p-6 rounded-xl text-white transform transition-all duration-300 hover:scale-105">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-medium opacity-90">Total P&L</h3>
+                        <p class="text-2xl font-bold">₹{{ total_pl|round(2) }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            {% if total_pl >= 0 %}
+                            <path fill-rule="evenodd"
+                                  d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"
+                                  clip-rule="evenodd"></path>
+                            {% else %}
+                            <path fill-rule="evenodd"
+                                  d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zM6.293 13.293a1 1 0 010 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 14.586V7a1 1 0 10-2 0v7.586l-1.293-1.293a1 1 0 00-1.414 0z"
+                                  clip-rule="evenodd"></path>
+                            {% endif %}
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-purple-400 to-purple-600 p-6 rounded-xl text-white transform transition-all duration-300 hover:scale-105">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-medium opacity-90">Profitable</h3>
+                        <p class="text-2xl font-bold">{{ profitable_holdings }}/{{ total_holdings }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                  clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Holdings Table -->
+        <div class="bg-gray-50 rounded-xl p-6">
+            <h2 class="text-lg font-semibold mb-4 text-gray-800">Detailed Holdings</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg overflow-hidden shadow">
+                    <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Symbol
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Quantity
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Avg
+                            Price
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            LTP
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Current Value
+                        </th>
+                        <th class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            P&L
+                        </th>
+                        <th class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                    {% for holding in holdings.holdings %}
+                    <tr class="hover:bg-gray-50 transition duration-150">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-3 w-3 rounded-full mr-3
+                                        {% if holding.pl > 0 %}bg-green-400
+                                        {% elif holding.pl < 0 %}bg-red-400
+                                        {% else %}bg-gray-400{% endif %}">
+                                </div>
+                                <div class="text-sm font-medium text-gray-900">{{ holding.symbol }}</div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="text-sm font-semibold text-gray-900">{{ holding.quantity }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="text-sm text-gray-900">₹{{ holding.costPrice }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="text-sm font-semibold text-gray-900">₹{{ holding.ltp }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="text-sm font-semibold text-gray-900">₹{{ (holding.ltp *
+                                holding.quantity)|round(2) }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="text-sm font-semibold {% if holding.pl > 0 %}text-green-600{% elif holding.pl < 0 %}text-red-600{% else %}text-gray-900{% endif %}">
+                                ₹{{ holding.pl }} ({{ holding.pl_percent }}%)
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="flex space-x-2 justify-center">
+                                <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">View</button>
+                                <span class="text-gray-300">|</span>
+                                <button class="text-green-600 hover:text-green-800 text-sm font-medium">Trade</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Portfolio Analysis -->
+        <div class="mt-8 bg-blue-50 rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-blue-900 mb-4">Portfolio Analysis</h3>
+            <div class="grid md:grid-cols-3 gap-4">
+                {% set winning_percentage = (profitable_holdings / total_holdings * 100) if total_holdings > 0 else 0 %}
+                {% set avg_pl_percentage = (total_pl / (total_value - total_pl) * 100) if (total_value - total_pl) > 0
+                else 0 %}
+
+                <div class="bg-white p-4 rounded-lg border border-blue-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-sm font-medium text-blue-900">Winning Ratio</h4>
+                            <p class="text-lg font-bold text-blue-700">{{ winning_percentage|round(1) }}%</p>
+                        </div>
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                      clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg border border-blue-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-sm font-medium text-blue-900">Portfolio Return</h4>
+                            <p class="text-lg font-bold {% if avg_pl_percentage >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                {{ avg_pl_percentage|round(2) }}%</p>
+                        </div>
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                      d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
+                                      clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg border border-blue-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-sm font-medium text-blue-900">Invested Amount</h4>
+                            <p class="text-lg font-bold text-blue-700">₹{{ (total_value - total_pl)|round(2) }}</p>
+                        </div>
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"></path>
+                                <path fill-rule="evenodd"
+                                      d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
+                                      clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <div class="text-center py-16">
+            <svg class="w-20 h-20 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            <h3 class="text-xl font-semibold text-gray-700 mb-2">No Holdings Found</h3>
+            <p class="text-gray-500 mb-6">Your portfolio holdings will appear here once you make some investments.</p>
+            <div class="space-x-4">
+                <a href="{{ url_for('market') }}"
+                   class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-200">
+                    Explore Market
+                </a>
+                <button onclick="manualRefresh()"
+                        class="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded transition duration-200">
+                    Retry
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    let autoRefreshInterval;
+    let countdownInterval;
+    let nextRefreshTime = Date.now() + 30000; // 30 seconds from now
+
+    function updateCountdown() {
+       const now = Date.now();
+       const timeLeft = Math.max(0, Math.ceil((nextRefreshTime - now) / 1000));
+
+       if (timeLeft > 0) {
+           document.getElementById('auto-refresh-indicator').innerHTML = `
+               <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+               <span>Next refresh in ${timeLeft}s</span>
+           `;
+       } else {
+           document.getElementById('auto-refresh-indicator').innerHTML = `
+               <div class="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-spin"></div>
+               <span>Refreshing...</span>
+           `;
+       }
+    }
+
+    function updateTimestamp() {
+       const now = new Date();
+       const timeString = now.toLocaleString();
+       document.getElementById('update-time').textContent = timeString;
+    }
+
+    function refreshHoldingsData() {
+       // Show loading state
+       const indicator = document.getElementById('auto-refresh-indicator');
+       indicator.innerHTML = `
+           <div class="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-spin"></div>
+           <span>Refreshing...</span>
+       `;
+
+       // Fetch new data
+       fetch(window.location.href, {
+           method: 'GET',
+           headers: {
+               'X-Requested-With': 'XMLHttpRequest'
+           }
+       })
+       .then(response => response.text())
+       .then(html => {
+           // Parse the response and update only the holdings content
+           const parser = new DOMParser();
+           const doc = parser.parseFromString(html, 'text/html');
+           const newContent = doc.getElementById('holdings-content');
+
+           if (newContent) {
+               // Add a subtle animation when updating
+               const currentContent = document.getElementById('holdings-content');
+               currentContent.style.opacity = '0.7';
+
+               setTimeout(() => {
+                   currentContent.innerHTML = newContent.innerHTML;
+                   currentContent.style.opacity = '1';
+                   updateTimestamp();
+
+                   // Re-attach event listeners for action buttons
+                   attachActionListeners();
+               }, 200);
+           }
+
+           // Reset the countdown
+           nextRefreshTime = Date.now() + 30000;
+       })
+       .catch(error => {
+           console.error('Error refreshing holdings data:', error);
+           document.getElementById('auto-refresh-indicator').innerHTML = `
+               <div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+               <span>Error refreshing data</span>
+           `;
+
+           // Try again in 10 seconds if there's an error
+           setTimeout(() => {
+               nextRefreshTime = Date.now() + 30000;
+           }, 10000);
+       });
+    }
+
+    function manualRefresh() {
+       // Clear existing intervals
+       if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+       if (countdownInterval) clearInterval(countdownInterval);
+
+       // Show manual refresh loading
+       const refreshIcon = document.getElementById('refresh-icon');
+       const refreshText = document.getElementById('refresh-text');
+       const originalIcon = refreshIcon.innerHTML;
+
+       refreshIcon.innerHTML = `
+           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+       `;
+       refreshIcon.classList.add('animate-spin');
+       refreshText.textContent = 'Refreshing...';
+
+       // Refresh the data
+       refreshHoldingsData();
+
+       // Reset button after a delay
+       setTimeout(() => {
+           refreshIcon.innerHTML = originalIcon;
+           refreshIcon.classList.remove('animate-spin');
+           refreshText.textContent = 'Refresh Now';
+
+           // Restart auto-refresh
+           startAutoRefresh();
+       }, 1000);
+    }
+
+    function startAutoRefresh() {
+       // Clear any existing intervals
+       if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+       if (countdownInterval) clearInterval(countdownInterval);
+
+       // Start auto-refresh every 30 seconds
+       autoRefreshInterval = setInterval(refreshHoldingsData, 30000);
+
+       // Update countdown every second
+       countdownInterval = setInterval(updateCountdown, 1000);
+
+       // Initial countdown update
+       updateCountdown();
+    }
+
+    function attachActionListeners() {
+       // Add interactivity for action buttons in holdings table
+       const viewButtons = document.querySelectorAll('button:contains("View")');
+       const tradeButtons = document.querySelectorAll('button:contains("Trade")');
+
+       document.querySelectorAll('td button').forEach(button => {
+           if (button.textContent.trim() === 'View') {
+               button.addEventListener('click', function() {
+                   const row = this.closest('tr');
+                   const symbol = row.querySelector('td:first-child .text-sm').textContent.trim();
+                   alert(`View details for ${symbol} - Feature coming soon!`);
+               });
+           } else if (button.textContent.trim() === 'Trade') {
+               button.addEventListener('click', function() {
+                   const row = this.closest('tr');
+                   const symbol = row.querySelector('td:first-child .text-sm').textContent.trim();
+                   alert(`Trade ${symbol} - Feature coming soon!`);
+               });
+           }
+       });
+    }
+
+    // Start auto-refresh when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+       startAutoRefresh();
+       updateTimestamp();
+       attachActionListeners();
+
+       // Pause auto-refresh when page is not visible
+       document.addEventListener('visibilitychange', function() {
+           if (document.hidden) {
+               if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+               if (countdownInterval) clearInterval(countdownInterval);
+           } else {
+               nextRefreshTime = Date.now() + 30000;
+               startAutoRefresh();
+           }
+       });
+    });
+
+    // Clean up intervals when leaving the page
+    window.addEventListener('beforeunload', function() {
+       if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+       if (countdownInterval) clearInterval(countdownInterval);
+    });
+</script>
+
+<style>
+    @keyframes spin {
+       from { transform: rotate(0deg); }
+       to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+       0%, 100% { opacity: 1; }
+       50% { opacity: 0.5; }
+    }
+
+    .animate-spin {
+       animation: spin 1s linear infinite;
+    }
+
+    .animate-pulse {
+       animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    .transition {
+       transition-property: all;
+       transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+       transition-duration: 150ms;
+    }
+
+    .transform {
+       transform: translateZ(0);
+    }
+
+    .hover\:scale-105:hover {
+       transform: scale(1.05);
+    }
+
+    .hover\:bg-gray-50:hover {
+       background-color: #f9fafb;
+    }
+
+    #holdings-content {
+       transition: opacity 0.3s ease;
+    }
+</style>
+{% endblock %}

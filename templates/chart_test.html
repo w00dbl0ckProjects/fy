@@ -1,0 +1,184 @@
+<!-- Create templates/chart_test.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <h1 class="text-2xl font-bold mb-4">Chart Test Page</h1>
+
+    <!-- Test Controls -->
+    <div class="mb-4 p-4 bg-gray-100 rounded">
+        <h3 class="font-bold mb-2">Test Controls</h3>
+        <div class="flex gap-4 mb-4">
+            <select id="test-symbol" class="border rounded p-2">
+                <option value="NSE:RELIANCE-EQ">RELIANCE</option>
+                <option value="NSE:TCS-EQ">TCS</option>
+                <option value="NSE:INFY-EQ">INFY</option>
+                <option value="NSE:NIFTY50-INDEX">NIFTY50</option>
+            </select>
+            <select id="test-interval" class="border rounded p-2">
+                <option value="1">1m</option>
+                <option value="5" selected>5m</option>
+                <option value="15">15m</option>
+                <option value="60">1h</option>
+                <option value="D">Daily</option>
+            </select>
+            <button onclick="loadTestData()" class="bg-blue-600 text-white px-4 py-2 rounded">Load Data</button>
+            <button onclick="testAPI()" class="bg-green-600 text-white px-4 py-2 rounded">Test API</button>
+        </div>
+        <div id="test-info" class="text-sm text-gray-600"></div>
+    </div>
+
+    <!-- Chart Container -->
+    <div id="chart-container" style="height: 500px; width: 100%; border: 1px solid #ccc;"></div>
+
+    <!-- Debug Output -->
+    <div class="mt-4 p-4 bg-gray-50 rounded">
+        <h3 class="font-bold mb-2">Debug Output</h3>
+        <pre id="debug-output" class="text-xs bg-white p-2 rounded overflow-auto max-h-40"></pre>
+    </div>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
+<script>
+let chart;
+let candlestickSeries;
+
+function log(message) {
+    console.log(message);
+    const debugOutput = document.getElementById('debug-output');
+    debugOutput.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+    debugOutput.scrollTop = debugOutput.scrollHeight;
+}
+
+function initChart() {
+    log('Initializing chart...');
+
+    const container = document.getElementById('chart-container');
+
+    try {
+        chart = LightweightCharts.createChart(container, {
+            width: container.clientWidth,
+            height: 500,
+            layout: {
+                backgroundColor: '#ffffff',
+                textColor: '#333333',
+            },
+            grid: {
+                vertLines: { color: '#f0f0f0' },
+                horzLines: { color: '#f0f0f0' },
+            },
+        });
+
+        candlestickSeries = chart.addCandlestickSeries({
+            upColor: '#26a69a',
+            downColor: '#ef5350',
+            borderVisible: false,
+            wickUpColor: '#26a69a',
+            wickDownColor: '#ef5350',
+        });
+
+        log('Chart initialized successfully');
+
+        // Load initial data
+        loadTestData();
+
+    } catch (error) {
+        log('Error initializing chart: ' + error.message);
+    }
+}
+
+function loadTestData() {
+    const symbol = document.getElementById('test-symbol').value;
+    const interval = document.getElementById('test-interval').value;
+
+    log(`Loading data for ${symbol} with ${interval} interval...`);
+
+    const url = `/api/historical_data?symbol=${encodeURIComponent(symbol)}&timeframe=5&interval=${interval}`;
+
+    fetch(url)
+        .then(response => {
+            log(`API response status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            log(`API response received: success=${data.success}, count=${data.count || 0}`);
+
+            if (data.success && data.data && data.data.length > 0) {
+                displayData(data.data);
+                document.getElementById('test-info').textContent =
+                    `Loaded ${data.count} candles for ${symbol} (${interval} interval)`;
+            } else {
+                log('No data received: ' + (data.error || data.message || 'Unknown error'));
+                document.getElementById('test-info').textContent =
+                    `Error: ${data.error || data.message || 'No data available'}`;
+            }
+        })
+        .catch(error => {
+            log('Fetch error: ' + error.message);
+            document.getElementById('test-info').textContent = `Error: ${error.message}`;
+        });
+}
+
+function displayData(data) {
+    try {
+        log(`Processing ${data.length} candles...`);
+
+        // Sample first candle to check format
+        log(`Sample candle: ${JSON.stringify(data[0])}`);
+
+        const chartData = data.map(candle => ({
+            time: candle.time,
+            open: candle.open,
+            high: candle.high,
+            low: candle.low,
+            close: candle.close
+        }));
+
+        log(`Converted to chart format. Sample: ${JSON.stringify(chartData[0])}`);
+
+        candlestickSeries.setData(chartData);
+
+        log('Chart data set successfully');
+
+    } catch (error) {
+        log('Error displaying data: ' + error.message);
+    }
+}
+
+function testAPI() {
+    const symbol = document.getElementById('test-symbol').value;
+
+    log(`Testing debug API for ${symbol}...`);
+
+    fetch(`/debug/chart-data/${encodeURIComponent(symbol)}`)
+        .then(response => response.json())
+        .then(data => {
+            log('Debug API response:');
+            log(JSON.stringify(data, null, 2));
+        })
+        .catch(error => {
+            log('Debug API error: ' + error.message);
+        });
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    log('Page loaded, checking TradingView...');
+
+    if (typeof LightweightCharts !== 'undefined') {
+        log('TradingView library loaded successfully');
+        initChart();
+    } else {
+        log('ERROR: TradingView library not loaded!');
+    }
+});
+
+// Handle resize
+window.addEventListener('resize', () => {
+    if (chart) {
+        chart.applyOptions({ width: document.getElementById('chart-container').clientWidth });
+    }
+});
+</script>
+{% endblock %}

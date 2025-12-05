@@ -1,0 +1,47 @@
+<!-- templates/positions.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <h1 class="text-2xl font-bold mb-6">Positions</h1>
+
+    {% if positions.netPositions %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
+                        <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Segment</th>
+                        <th class="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                        <th class="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Price</th>
+                        <th class="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">LTP</th>
+                        <th class="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">P&L</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for position in positions.netPositions %}
+                    <tr>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ position.symbol }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {% if position.segment == 10 %}Equity{% elif position.segment == 20 %}F&O{% else %}{{ position.segment }}{% endif %}
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-right {% if position.netQty > 0 %}text-green-600{% elif position.netQty < 0 %}text-red-600{% else %}text-gray-900{% endif %}">
+                            {{ position.netQty }}
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-900">₹{{ position.avgPrice }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-900">₹{{ position.ltp }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-right {% if position.pl > 0 %}text-green-600{% elif position.pl < 0 %}text-red-600{% else %}text-gray-900{% endif %}">
+                            ₹{{ position.pl }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="text-center py-10">
+            <p class="text-gray-500">No positions found</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

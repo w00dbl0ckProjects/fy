@@ -1,0 +1,602 @@
+<!-- templates/market_live.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold">Live Candlestick Chart</h1>
+                <div class="flex items-center mt-2">
+                    <div id="connection-status" class="flex items-center text-sm">
+                        <div class="w-2 h-2 bg-red-500 rounded-full mr-2" id="status-indicator"></div>
+                        <span id="status-text">Connecting...</span>
+                    </div>
+                    <div id="last-updated" class="ml-4 text-sm text-gray-400">
+                        Last update: <span id="update-time">--</span>
+                    </div>
+                </div>
+            </div>
+            <div class="space-x-2">
+                <a href="{{ url_for('market') }}" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded">
+                    Static View
+                </a>
+            </div>
+        </div>
+
+        <!-- Current Symbol Info -->
+        <div class="mb-4">
+            <div class="text-sm text-gray-500">Currently viewing:</div>
+            <div class="flex items-center">
+                <h2 class="text-xl font-semibold" id="current-symbol">
+                    {% if instrument %}
+                    {{ instrument.symbol }} - {{ instrument.name }}
+                    {% else %}
+                    {{ symbol or 'NSE:RELIANCE-EQ' }}
+                    {% endif %}
+                </h2>
+            </div>
+        </div>
+
+        <!-- Quick Symbol Selection -->
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold mb-2">Quick Select Symbols</h2>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="changeSymbol('NSE:RELIANCE-EQ')"
+                        class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200">RELIANCE
+                </button>
+                <button onclick="changeSymbol('NSE:TCS-EQ')"
+                        class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200">TCS
+                </button>
+                <button onclick="changeSymbol('NSE:INFY-EQ')"
+                        class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200">INFY
+                </button>
+                <button onclick="changeSymbol('NSE:HDFCBANK-EQ')"
+                        class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200">HDFC BANK
+                </button>
+                <button onclick="changeSymbol('NSE:NIFTY50-INDEX')"
+                        class="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200">NIFTY50
+                </button>
+            </div>
+        </div>
+
+        <!-- Live Price Display -->
+        <div class="grid md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-lg text-white">
+                <h3 class="text-sm font-medium opacity-90">Current Price</h3>
+                <p class="text-xl font-bold" id="current-price">₹--</p>
+            </div>
+            <div class="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-lg text-white">
+                <h3 class="text-sm font-medium opacity-90">Change</h3>
+                <p class="text-xl font-bold" id="price-change">--</p>
+            </div>
+            <div class="bg-gradient-to-r from-purple-500 to-purple-600 p-4 rounded-lg text-white">
+                <h3 class="text-sm font-medium opacity-90">Volume</h3>
+                <p class="text-xl font-bold" id="current-volume">--</p>
+            </div>
+            <div class="bg-gradient-to-r from-orange-500 to-orange-600 p-4 rounded-lg text-white">
+                <h3 class="text-sm font-medium opacity-90">Data Points</h3>
+                <p class="text-xl font-bold" id="data-points">--</p>
+            </div>
+        </div>
+
+        <!-- Chart Controls -->
+        <div class="mb-4 flex items-center justify-between flex-wrap gap-4">
+            <div class="flex space-x-2">
+                <span class="text-sm font-medium text-gray-700">Timeframe:</span>
+                <button onclick="changeTimeframe('1')"
+                        class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 timeframe-btn"
+                        data-timeframe="1">1D
+                </button>
+                <button onclick="changeTimeframe('5')"
+                        class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 timeframe-btn"
+                        data-timeframe="5">5D
+                </button>
+                <button onclick="changeTimeframe('10')"
+                        class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 timeframe-btn"
+                        data-timeframe="10">10D
+                </button>
+            </div>
+            <div class="flex space-x-2">
+                <span class="text-sm font-medium text-gray-700">Interval:</span>
+                <button onclick="changeInterval('1')"
+                        class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 interval-btn"
+                        data-interval="1">1m
+                </button>
+                <button onclick="changeInterval('5')"
+                        class="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 interval-btn"
+                        data-interval="5">5m
+                </button>
+                <button onclick="changeInterval('15')"
+                        class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 interval-btn"
+                        data-interval="15">15m
+                </button>
+                <button onclick="changeInterval('60')"
+                        class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 interval-btn"
+                        data-interval="60">1h
+                </button>
+                <button onclick="changeInterval('D')"
+                        class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 interval-btn"
+                        data-interval="D">Daily
+                </button>
+            </div>
+        </div>
+
+        <!-- TradingView Chart Container -->
+        <div class="bg-gray-50 p-4 rounded-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">Candlestick Chart</h2>
+                <div class="text-sm text-gray-500">
+                    <span id="chart-info">Loading chart...</span>
+                </div>
+            </div>
+
+            <div class="relative" style="height: 600px;">
+                <!-- Chart Container -->
+                <div id="candlestick-chart" style="height: 100%; width: 100%;"></div>
+
+                <!-- Loading Overlay -->
+                <div id="chart-loading"
+                     class="absolute inset-0 flex items-center justify-center bg-gray-50 bg-opacity-90">
+                    <div class="text-center">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                        <p class="text-sm text-gray-600">Loading chart data...</p>
+                    </div>
+                </div>
+
+                <!-- No Data Overlay -->
+                <div id="no-data-message" class="absolute inset-0 flex items-center justify-center bg-gray-50 hidden">
+                    <div class="text-center">
+                        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor"
+                             viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">No Chart Data</h3>
+                        <p class="text-gray-500 mb-4">Unable to load historical data for this symbol</p>
+                        <button onclick="loadHistoricalData()"
+                                class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Info -->
+        <div class="mt-4 p-4 bg-gray-100 rounded text-xs text-gray-600" id="debug-info">
+            <strong>Debug:</strong> <span id="debug-text">Initializing...</span>
+        </div>
+    </div>
+</div>
+
+<!-- TradingView Lightweight Charts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+<!-- Replace the TradingView script tag with this specific version -->
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+
+<script>
+    // Global variables
+    let socket;
+    let chart;
+    let candlestickSeries;
+    let volumeSeries;
+    let currentSymbol = '{{ symbol or "NSE:RELIANCE-EQ" }}';
+    let currentTimeframe = '5';
+    let currentInterval = '5';
+    let lastPrice = null;
+
+    // Debug function
+    function debugLog(message) {
+        console.log(message);
+        document.getElementById('debug-text').textContent = message;
+    }
+
+    // Initialize Socket.IO
+    function initializeSocket() {
+        debugLog('Initializing WebSocket connection...');
+        socket = io();
+
+        socket.on('connect', function() {
+            debugLog('WebSocket connected successfully');
+            updateConnectionStatus('connected');
+            if (currentSymbol) {
+                subscribeToSymbol(currentSymbol);
+            }
+        });
+
+        socket.on('disconnect', function() {
+            debugLog('WebSocket disconnected');
+            updateConnectionStatus('disconnected');
+        });
+
+        socket.on('market_data', function(data) {
+            debugLog(`Received live data for ${data.symbol}: LTP=${data.ltp}`);
+            handleMarketData(data);
+        });
+
+        socket.on('subscribed', function(data) {
+            debugLog(`Subscribed to live data: ${data.symbol}`);
+            updateConnectionStatus('subscribed', data.symbol);
+        });
+    }
+
+    // Update connection status
+    function updateConnectionStatus(status, symbol = null) {
+        const indicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+
+        switch (status) {
+            case 'connected':
+                indicator.className = 'w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse';
+                statusText.textContent = 'Connected';
+                break;
+            case 'subscribed':
+                indicator.className = 'w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse';
+                statusText.textContent = `Live - ${symbol}`;
+                break;
+            case 'disconnected':
+                indicator.className = 'w-2 h-2 bg-red-500 rounded-full mr-2';
+                statusText.textContent = 'Disconnected';
+                break;
+        }
+    }
+
+    // Subscribe/Unsubscribe functions
+    function subscribeToSymbol(symbol) {
+        if (socket && socket.connected) {
+            socket.emit('subscribe', { symbol: symbol });
+        }
+    }
+
+    function unsubscribeFromSymbol(symbol) {
+        if (socket && socket.connected) {
+            socket.emit('unsubscribe', { symbol: symbol });
+        }
+    }
+
+    // Handle live market data
+    function handleMarketData(data) {
+        try {
+            updatePriceDisplay(data);
+            updateTimestamp();
+        } catch (error) {
+            debugLog(`Error handling market data: ${error.message}`);
+        }
+    }
+
+    // Update price display
+    function updatePriceDisplay(data) {
+        if (data.ltp) {
+            const price = parseFloat(data.ltp);
+            document.getElementById('current-price').textContent = `₹${price.toFixed(2)}`;
+
+            if (lastPrice !== null) {
+                const priceEl = document.getElementById('current-price');
+                if (price > lastPrice) {
+                    priceEl.className = 'text-xl font-bold text-green-300';
+                } else if (price < lastPrice) {
+                    priceEl.className = 'text-xl font-bold text-red-300';
+                }
+            }
+            lastPrice = price;
+        }
+
+        if (data.ch && data.chp) {
+            const change = parseFloat(data.ch);
+            const changePercent = parseFloat(data.chp);
+            const changeEl = document.getElementById('price-change');
+            changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent.toFixed(2)}%)`;
+            changeEl.className = change >= 0 ? 'text-xl font-bold text-green-300' : 'text-xl font-bold text-red-300';
+        }
+
+        if (data.volume) {
+            document.getElementById('current-volume').textContent = formatVolume(data.volume);
+        }
+    }
+
+    // Format volume
+    function formatVolume(volume) {
+        if (volume >= 1000000) return (volume / 1000000).toFixed(1) + 'M';
+        if (volume >= 1000) return (volume / 1000).toFixed(1) + 'K';
+        return volume.toString();
+    }
+
+    // Update timestamp
+    function updateTimestamp() {
+        document.getElementById('update-time').textContent = new Date().toLocaleTimeString();
+    }
+
+    // Initialize TradingView Chart
+    // Replace the initializeTradingViewChart function in market_live.html
+
+    function initializeTradingViewChart() {
+        debugLog('Initializing TradingView chart...');
+
+        const chartContainer = document.getElementById('candlestick-chart');
+
+        if (!chartContainer) {
+            debugLog('ERROR: Chart container not found');
+            return;
+        }
+
+        // Check if TradingView library is loaded
+        if (typeof LightweightCharts === 'undefined') {
+            debugLog('ERROR: LightweightCharts library not loaded');
+            showNoDataMessage('TradingView library not loaded');
+            return;
+        }
+
+        try {
+            debugLog('Creating TradingView chart...');
+
+            chart = LightweightCharts.createChart(chartContainer, {
+                width: chartContainer.clientWidth,
+                height: 600,
+                layout: {
+                    backgroundColor: '#ffffff',
+                    textColor: '#333333',
+                },
+                grid: {
+                    vertLines: { color: '#f0f0f0' },
+                    horzLines: { color: '#f0f0f0' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: '#cccccc',
+                },
+                timeScale: {
+                    borderColor: '#cccccc',
+                    timeVisible: true,
+                    secondsVisible: false,
+                },
+            });
+
+            debugLog('Chart created, adding candlestick series...');
+
+            // Add candlestick series (takes up top 70% of chart)
+            candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#26a69a',
+                downColor: '#ef5350',
+                borderVisible: false,
+                wickUpColor: '#26a69a',
+                wickDownColor: '#ef5350',
+            });
+
+            debugLog('Candlestick series added, adding volume series...');
+
+            // Add volume series (takes up bottom 30% of chart)
+            volumeSeries = chart.addHistogramSeries({
+                color: '#26a69a',
+                priceFormat: {
+                    type: 'volume',
+                },
+                priceScaleId: 'volume', // Create separate price scale for volume
+                scaleMargins: {
+                    top: 0.7,  // Start volume chart at 70% from top
+                    bottom: 0, // Go to bottom of chart
+                },
+            });
+
+            // Configure the volume price scale to be on the right
+            chart.priceScale('volume').applyOptions({
+                scaleMargins: {
+                    top: 0.7,  // Volume takes bottom 30% of chart
+                    bottom: 0,
+                },
+                borderVisible: false,
+            });
+
+            // Configure the main price scale for candlesticks
+            chart.priceScale('right').applyOptions({
+                scaleMargins: {
+                    top: 0.1,   // Small margin at top
+                    bottom: 0.3, // Leave 30% space for volume at bottom
+                },
+            });
+
+            debugLog('Volume series added successfully');
+
+            // Verify series are created
+            if (!candlestickSeries) {
+                debugLog('ERROR: Candlestick series is null after creation');
+                return;
+            }
+
+            if (!volumeSeries) {
+                debugLog('ERROR: Volume series is null after creation');
+                return;
+            }
+
+            debugLog('TradingView chart initialized successfully');
+
+            // Handle resize
+            window.addEventListener('resize', () => {
+                if (chart) {
+                    chart.applyOptions({ width: chartContainer.clientWidth });
+                }
+            });
+
+            // Load initial data
+            setTimeout(() => {
+                loadHistoricalData();
+            }, 500);
+
+        } catch (error) {
+            debugLog(`ERROR creating chart: ${error.message}`);
+            console.error('Chart creation error:', error);
+            showNoDataMessage(`Chart initialization failed: ${error.message}`);
+        }
+    }
+
+    // Load historical data
+    function loadHistoricalData() {
+        debugLog(`Loading historical data for ${currentSymbol}...`);
+
+        // Show loading
+        document.getElementById('chart-loading').style.display = 'flex';
+        document.getElementById('no-data-message').classList.add('hidden');
+
+        const url = `/api/historical_data?symbol=${encodeURIComponent(currentSymbol)}&timeframe=${currentTimeframe}&interval=${currentInterval}`;
+
+        fetch(url)
+            .then(response => {
+                debugLog(`API response status: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                debugLog(`API response: success=${data.success}, count=${data.count}`);
+
+                if (data.success && data.data && data.data.length > 0) {
+                    displayChartData(data.data, data.count);
+                } else {
+                    showNoDataMessage(data.error || 'No data available');
+                }
+            })
+            .catch(error => {
+                debugLog(`Error fetching data: ${error.message}`);
+                showNoDataMessage(`Network error: ${error.message}`);
+            })
+            .finally(() => {
+                document.getElementById('chart-loading').style.display = 'none';
+            });
+    }
+
+    // Display chart data
+    function displayChartData(data, count) {
+        try {
+            debugLog(`Processing ${count} candles for chart...`);
+
+            // Prepare candlestick data
+            const candlestickData = data.map(candle => ({
+                time: candle.time,
+                open: candle.open,
+                high: candle.high,
+                low: candle.low,
+                close: candle.close
+            }));
+
+            // Prepare volume data
+            const volumeData = data.map(candle => ({
+                time: candle.time,
+                value: candle.volume,
+                color: candle.close >= candle.open ? '#26a69a' : '#ef5350'
+            }));
+
+            // Update chart
+            candlestickSeries.setData(candlestickData);
+            volumeSeries.setData(volumeData);
+
+            // Update info
+            document.getElementById('chart-info').textContent = `${count} candles • ${currentTimeframe}D • ${currentInterval}m`;
+            document.getElementById('data-points').textContent = count;
+
+            debugLog(`Chart updated successfully with ${count} candles`);
+
+        } catch (error) {
+            debugLog(`Error displaying chart data: ${error.message}`);
+            showNoDataMessage(`Chart error: ${error.message}`);
+        }
+    }
+
+    // Show no data message
+    function showNoDataMessage(message) {
+        document.getElementById('no-data-message').classList.remove('hidden');
+        document.getElementById('chart-info').textContent = message;
+        document.getElementById('data-points').textContent = '0';
+    }
+
+    // Change symbol
+    function changeSymbol(symbol) {
+        debugLog(`Changing symbol to: ${symbol}`);
+
+        if (currentSymbol) {
+            unsubscribeFromSymbol(currentSymbol);
+        }
+
+        currentSymbol = symbol;
+        document.getElementById('current-symbol').textContent = symbol;
+
+        subscribeToSymbol(symbol);
+        loadHistoricalData();
+
+        // Reset price display
+        lastPrice = null;
+        document.getElementById('current-price').textContent = '₹--';
+        document.getElementById('price-change').textContent = '--';
+        document.getElementById('current-volume').textContent = '--';
+    }
+
+    // Change timeframe
+    function changeTimeframe(timeframe) {
+        currentTimeframe = timeframe;
+        updateButtonStates('timeframe', timeframe);
+        loadHistoricalData();
+    }
+
+    // Change interval
+    function changeInterval(interval) {
+        currentInterval = interval;
+        updateButtonStates('interval', interval);
+        loadHistoricalData();
+    }
+
+    // Update button states
+    function updateButtonStates(type, activeValue) {
+        const buttons = document.querySelectorAll(`.${type}-btn`);
+        buttons.forEach(btn => {
+            const value = btn.dataset[type];
+            if (value === activeValue) {
+                btn.className = btn.className.replace(/bg-gray-\d+/g, 'bg-blue-100').replace(/text-gray-\d+/g, 'text-blue-700');
+            } else {
+                btn.className = btn.className.replace(/bg-blue-\d+/g, 'bg-gray-100').replace(/text-blue-\d+/g, 'text-gray-700');
+            }
+        });
+    }
+
+    // Initialize everything
+    document.addEventListener('DOMContentLoaded', function() {
+        debugLog('Page loaded, initializing components...');
+
+        // Check if TradingView library is loaded
+        if (typeof LightweightCharts !== 'undefined') {
+            debugLog('TradingView library loaded successfully');
+            initializeTradingViewChart();
+        } else {
+            debugLog('Error: TradingView library not loaded');
+        }
+
+        initializeSocket();
+    });
+
+    // Cleanup
+    window.addEventListener('beforeunload', function() {
+        if (socket && currentSymbol) {
+            unsubscribeFromSymbol(currentSymbol);
+            socket.disconnect();
+        }
+    });
+</script>
+
+<style>
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .animate-spin {
+        animation: spin 1s linear infinite;
+    }
+
+    .animate-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+</style>
+{% endblock %}

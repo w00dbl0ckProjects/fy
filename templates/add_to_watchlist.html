@@ -1,0 +1,201 @@
+<!-- templates/add_to_watchlist.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">Add Instrument to "{{ watchlist.name }}"</h1>
+            <a href="{{ url_for('watchlist_detail', watchlist_id=watchlist.id) }}"
+               class="text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </a>
+        </div>
+
+        <!-- Search Section -->
+        <div class="mb-8">
+            <label for="instrument-search" class="block text-sm font-medium text-gray-700 mb-2">Search
+                Instruments</label>
+            <div class="relative">
+                <input type="text" id="instrument-search" placeholder="Search by symbol or name (minimum 2 characters)"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <div id="loading-indicator" class="absolute right-3 top-2.5 hidden">
+                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                </div>
+            </div>
+            <div id="search-status" class="mt-2 text-sm text-gray-500"></div>
+        </div>
+
+        <!-- Search Results -->
+        <div id="search-results" class="mb-8"></div>
+
+        <!-- Manual Add Form -->
+        <div class="border-t pt-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Or Add by Fyers Token</h3>
+            <form method="post" action="{{ url_for('add_to_watchlist', watchlist_id=watchlist.id) }}" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="instrument_id" class="block text-sm font-medium text-gray-700">Fyers Token</label>
+                        <input type="text" id="instrument_id" name="instrument_id" required
+                               placeholder="e.g., NSE:RELIANCE-EQ"
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <p class="mt-1 text-sm text-gray-500">Enter the exact Fyers token for the instrument</p>
+                    </div>
+                    <div>
+                        <label for="notes" class="block text-sm font-medium text-gray-700">Notes (Optional)</label>
+                        <input type="text" id="notes" name="notes" maxlength="255"
+                               placeholder="Personal notes about this instrument"
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <a href="{{ url_for('watchlist_detail', watchlist_id=watchlist.id) }}"
+                       class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                            class="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded">
+                        Add to Watchlist
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('instrument-search');
+        const resultsDiv = document.getElementById('search-results');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const statusDiv = document.getElementById('search-status');
+
+        let searchTimeout;
+        let currentRequest;
+
+        searchInput.addEventListener('input', function() {
+            const query = searchInput.value.trim();
+
+            clearTimeout(searchTimeout);
+
+            if (currentRequest) {
+                currentRequest.abort();
+            }
+
+            if (query.length < 2) {
+                resultsDiv.innerHTML = '';
+                statusDiv.textContent = '';
+                loadingIndicator.classList.add('hidden');
+                return;
+            }
+
+            statusDiv.textContent = `Searching for "${query}"...`;
+            loadingIndicator.classList.remove('hidden');
+
+            searchTimeout = setTimeout(() => {
+                performSearch(query);
+            }, 300);
+        });
+
+        function performSearch(query) {
+            const controller = new AbortController();
+            currentRequest = controller;
+
+            fetch(`/api/search_instruments?q=${encodeURIComponent(query)}&limit=20`, {
+                signal: controller.signal
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingIndicator.classList.add('hidden');
+                currentRequest = null;
+
+                if (data.length === 0) {
+                    statusDiv.textContent = `No results found for "${query}"`;
+                    resultsDiv.innerHTML = '<div class="text-center py-8 text-gray-500">No instruments found matching your search.</div>';
+                    return;
+                }
+
+                statusDiv.textContent = `Found ${data.length} instrument${data.length === 1 ? '' : 's'} matching "${query}"`;
+
+                let html = '<div class="bg-gray-50 rounded-lg p-4"><h3 class="text-lg font-medium text-gray-900 mb-4">Search Results</h3>';
+                html += '<div class="space-y-2">';
+
+                data.forEach(item => {
+                    html += `
+                        <div class="bg-white p-3 rounded border hover:bg-blue-50 cursor-pointer" onclick="addInstrument('${item.fy_token}', '${escapeHtml(item.symbol)}', '${escapeHtml(item.name || '')}')">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="font-semibold text-gray-900">${escapeHtml(item.symbol)}</div>
+                                    <div class="text-sm text-gray-600">${escapeHtml(item.name || '')}</div>
+                                    <div class="text-xs text-gray-500">${escapeHtml(item.exchange)} • Token: ${escapeHtml(item.fy_token)}</div>
+                                </div>
+                                <div class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                    Add to Watchlist
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+                resultsDiv.innerHTML = html;
+            })
+            .catch(error => {
+                currentRequest = null;
+                loadingIndicator.classList.add('hidden');
+
+                if (error.name === 'AbortError') {
+                    return;
+                }
+
+                console.error('Search error:', error);
+                statusDiv.textContent = `Error searching for "${query}"`;
+               resultsDiv.innerHTML = `<div class="text-center py-8 text-red-500">
+                                         <p>Error occurred while searching: ${escapeHtml(error.message)}</p>
+                                         <p class="text-sm mt-2">Please try again or contact support if the problem persists.</p>
+                                       </div>`;
+           });
+       }
+
+       function escapeHtml(text) {
+           const div = document.createElement('div');
+           div.textContent = text;
+           return div.innerHTML;
+       }
+
+       // Global function to add instrument
+       window.addInstrument = function(fyToken, symbol, name) {
+           // Fill the form with selected instrument
+           document.getElementById('instrument_id').value = fyToken;
+           document.getElementById('notes').value = `Added ${symbol}${name ? ' - ' + name : ''}`;
+
+           // Clear search results
+           resultsDiv.innerHTML = `<div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                     <div class="flex">
+                                         <div class="flex-shrink-0">
+                                             <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                             </svg>
+                                         </div>
+                                         <div class="ml-3">
+                                             <h3 class="text-sm font-medium text-green-800">Instrument Selected</h3>
+                                             <div class="mt-2 text-sm text-green-700">
+                                                 <p><strong>${escapeHtml(symbol)}</strong> has been selected. Click "Add to Watchlist" below to confirm.</p>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 </div>`;
+
+           statusDiv.textContent = `Selected: ${symbol}`;
+           searchInput.value = '';
+
+           // Scroll to form
+           document.getElementById('instrument_id').scrollIntoView({ behavior: 'smooth' });
+       };
+    });
+</script>
+{% endblock %}

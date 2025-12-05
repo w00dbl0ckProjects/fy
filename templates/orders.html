@@ -1,0 +1,63 @@
+<!-- templates/orders.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">Order Book</h1>
+        <button class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">Place New Order</button>
+    </div>
+
+    {% if orders.orderBook %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                        <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
+                        <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Side</th>
+                        <th class="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                        <th class="px-4 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                        <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for order in orders.orderBook %}
+                    <tr>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{{ order.id }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{{ order.symbol }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {% if order.type == 1 %}Limit{% elif order.type == 2 %}Market{% else %}{{ order.type }}{% endif %}
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm {% if order.side == 1 %}text-green-600{% else %}text-red-600{% endif %}">
+                            {% if order.side == 1 %}Buy{% else %}Sell{% endif %}
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-900">{{ order.qty }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-900">₹{{ order.limitPrice }}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                {% if order.status == 1 %}bg-green-100 text-green-800
+                                {% elif order.status == 2 %}bg-red-100 text-red-800
+                                {% elif order.status == 4 %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {% if order.status == 1 %}Filled
+                                {% elif order.status == 2 %}Cancelled
+                                {% elif order.status == 4 %}Pending
+                                {% else %}{{ order.status }}{% endif %}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.orderDateTime }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="text-center py-10">
+            <p class="text-gray-500">No orders found</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

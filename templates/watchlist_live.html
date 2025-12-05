@@ -1,0 +1,295 @@
+<!-- templates/watchlist_live.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold">{{ watchlist.name }} - Live</h1>
+                <div class="flex items-center mt-2">
+                    <div id="connection-status" class="flex items-center text-sm">
+                        <div class="w-2 h-2 bg-red-500 rounded-full mr-2" id="status-indicator"></div>
+                        <span id="status-text">Connecting...</span>
+                    </div>
+                    <div id="last-updated" class="ml-4 text-sm text-gray-400">
+                        Last update: <span id="update-time">--</span>
+                    </div>
+                </div>
+            </div>
+            <div class="space-x-2">
+                <a href="{{ url_for('watchlist_detail', watchlist_id=watchlist.id) }}"
+                   class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded">
+                    Static View
+                </a>
+                <a href="{{ url_for('add_to_watchlist', watchlist_id=watchlist.id) }}"
+                   class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded">
+                    Add Instruments
+                </a>
+            </div>
+        </div>
+
+        {% if items %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200" id="watchlist-table">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">LTP</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Change</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">% Change</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Volume</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="watchlist-body">
+                    {% for item in items %}
+                    {% if item.instrument %}
+                    <tr id="row-{{ item.instrument.fy_token }}" class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-3 w-3 rounded-full mr-3 bg-gray-400" id="status-{{ item.instrument.fy_token }}"></div>
+                                <div class="text-sm font-medium text-gray-900">{{ item.instrument.symbol }}</div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ item.instrument.name or '-' }}</div>
+                            <div class="text-xs text-gray-500">{{ item.instrument.exchange }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="text-sm font-semibold text-gray-900" id="ltp-{{ item.instrument.fy_token }}">--</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="text-sm font-semibold" id="change-{{ item.instrument.fy_token }}">--</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="text-sm font-semibold" id="change-pct-{{ item.instrument.fy_token }}">--</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="text-sm text-gray-900" id="volume-{{ item.instrument.fy_token }}">--</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="flex justify-center space-x-2">
+                                <a href="{{ url_for('market_live', fy_token=item.instrument.fy_token) }}"
+                                   class="text-blue-600 hover:text-blue-800 text-sm">Chart</a>
+                                <span class="text-gray-300">|</span>
+                                <a href="{{ url_for('view_instrument', fy_token=item.instrument.fy_token) }}"
+                                   class="text-green-600 hover:text-green-800 text-sm">Details</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-16">
+            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">No Instruments in Watchlist</h3>
+            <p class="text-gray-500 mb-6">Add instruments to start tracking their live performance.</p>
+            <a href="{{ url_for('add_to_watchlist', watchlist_id=watchlist.id) }}"
+               class="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded">
+                Add Instruments
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+<script>
+let socket;
+let subscribedSymbols = new Set();
+let lastPrices = {};
+
+// Initialize Socket.IO connection
+function initializeSocket() {
+    socket = io();
+
+    socket.on('connect', function() {
+        console.log('Connected to server');
+        updateConnectionStatus('connected');
+
+        // Subscribe to all instruments in watchlist
+        subscribeToWatchlistSymbols();
+    });
+
+    socket.on('disconnect', function() {
+        console.log('Disconnected from server');
+        updateConnectionStatus('disconnected');
+    });
+
+    socket.on('market_data', function(data) {
+        console.log('Received market data:', data);
+        handleMarketData(data);
+    });
+
+    socket.on('subscribed', function(data) {
+        console.log('Subscribed to:', data.symbol);
+        updateSymbolStatus(data.symbol, 'subscribed');
+    });
+
+    socket.on('error', function(data) {
+        console.error('Socket error:', data);
+    });
+}
+
+function updateConnectionStatus(status) {
+    const indicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+
+    switch (status) {
+        case 'connected':
+            indicator.className = 'w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse';
+            statusText.textContent = 'Connected - Loading data...';
+            break;
+        case 'disconnected':
+            indicator.className = 'w-2 h-2 bg-red-500 rounded-full mr-2';
+            statusText.textContent = 'Disconnected';
+            break;
+        default:
+            indicator.className = 'w-2 h-2 bg-gray-500 rounded-full mr-2';
+            statusText.textContent = 'Connecting...';
+    }
+}
+
+function updateSymbolStatus(symbol, status) {
+    const statusEl = document.getElementById(`status-${symbol.replace(':', '-')}`);
+    if (statusEl) {
+        switch (status) {
+            case 'subscribed':
+                statusEl.className = 'flex-shrink-0 h-3 w-3 rounded-full mr-3 bg-green-400 animate-pulse';
+                break;
+            case 'updated':
+                statusEl.className = 'flex-shrink-0 h-3 w-3 rounded-full mr-3 bg-blue-400';
+                break;
+            default:
+                statusEl.className = 'flex-shrink-0 h-3 w-3 rounded-full mr-3 bg-gray-400';
+        }
+    }
+}
+
+function subscribeToWatchlistSymbols() {
+    {% if items %}
+    const symbols = [
+        {% for item in items %}
+        {% if item.instrument %}
+        '{{ item.instrument.exchange }}:{{ item.instrument.symbol }}',
+        {% endif %}
+        {% endfor %}
+    ];
+
+    symbols.forEach(symbol => {
+        if (!subscribedSymbols.has(symbol)) {
+            console.log('Subscribing to:', symbol);
+            socket.emit('subscribe', { symbol: symbol });
+            subscribedSymbols.add(symbol);
+        }
+    });
+
+    document.getElementById('status-text').textContent = `Live - ${symbols.length} symbols`;
+    {% endif %}
+}
+
+function handleMarketData(data) {
+    const symbol = data.symbol;
+    if (!symbol) return;
+
+    // Clean symbol identifier for DOM
+    const symbolId = symbol.replace(':', '-');
+
+    // Update LTP
+    const ltpEl = document.getElementById(`ltp-${symbolId}`);
+    if (ltpEl && data.ltp !== undefined) {
+        const price = parseFloat(data.ltp);
+        ltpEl.textContent = `₹${price.toFixed(2)}`;
+
+        // Color coding based on price movement
+        const lastPrice = lastPrices[symbol];
+        if (lastPrice !== undefined) {
+            if (price > lastPrice) {
+                ltpEl.className = 'text-sm font-semibold text-green-600';
+            } else if (price < lastPrice) {
+                ltpEl.className = 'text-sm font-semibold text-red-600';
+            } else {
+                ltpEl.className = 'text-sm font-semibold text-gray-900';
+            }
+        }
+        lastPrices[symbol] = price;
+    }
+
+    // Update Change
+    const changeEl = document.getElementById(`change-${symbolId}`);
+    if (changeEl && data.ch !== undefined) {
+        const change = parseFloat(data.ch);
+        changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}`;
+        changeEl.className = change >= 0 ? 'text-sm font-semibold text-green-600' : 'text-sm font-semibold text-red-600';
+    }
+
+    // Update Change Percentage
+    const changePctEl = document.getElementById(`change-pct-${symbolId}`);
+    if (changePctEl && data.chp !== undefined) {
+        const changePct = parseFloat(data.chp);
+        changePctEl.textContent = `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
+        changePctEl.className = changePct >= 0 ? 'text-sm font-semibold text-green-600' : 'text-sm font-semibold text-red-600';
+    }
+
+    // Update Volume
+    const volumeEl = document.getElementById(`volume-${symbolId}`);
+    if (volumeEl && data.volume !== undefined) {
+        volumeEl.textContent = formatVolume(data.volume);
+    }
+
+    // Update symbol status
+    updateSymbolStatus(symbolId, 'updated');
+
+    // Update timestamp
+    updateTimestamp();
+}
+
+function formatVolume(volume) {
+    if (volume >= 1000000) {
+        return (volume / 1000000).toFixed(1) + 'M';
+    } else if (volume >= 1000) {
+        return (volume / 1000).toFixed(1) + 'K';
+    }
+    return volume.toString();
+}
+
+function updateTimestamp() {
+    const now = new Date();
+    document.getElementById('update-time').textContent = now.toLocaleTimeString();
+}
+
+// Initialize everything when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeSocket();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (socket) {
+        subscribedSymbols.forEach(symbol => {
+            socket.emit('unsubscribe', { symbol: symbol });
+        });
+        socket.disconnect();
+    }
+});
+</script>
+
+<style>
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+</style>
+{% endblock %}

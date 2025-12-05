@@ -1,0 +1,191 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fyers Trading Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+<nav class="bg-blue-600 text-white shadow-md">
+    <div class="container mx-auto px-4 py-3">
+        <div class="flex justify-between items-center">
+            <div class="font-bold text-xl">Fyers Trading Dashboard</div>
+            <div class="space-x-4">
+                {% if session.user_id %}
+                <a href="/dashboard" class="hover:text-blue-200">Dashboard</a>
+                <a href="/orders" class="hover:text-blue-200">Orders</a>
+                <a href="/positions" class="hover:text-blue-200">Positions</a>
+                <a href="/instruments" class="hover:text-blue-200">Instruments</a>
+                <a href="/watchlists" class="hover:text-blue-200">watchlists</a>
+                <a href="/market" class="hover:text-blue-200">Market</a>
+                <a href="/realtime-market" class="hover:text-blue-200 bg-blue-500 px-2 py-1 rounded">Real-Time</a>
+                <a href="/holdings" class="hover:text-blue-200">Holdings</a>
+                <a href="/funds" class="hover:text-blue-200">Funds</a>
+                <a href="/account" class="hover:text-blue-200">Account</a>
+                <a href="/logout" class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded">Logout</a>
+                {% else %}
+                <a href="/login" class="hover:text-blue-200">Login</a>
+                <a href="/register" class="bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="container mx-auto px-4 py-2">
+    {% for category, message in messages %}
+    <div class="p-4 mb-4 rounded-md
+                        {% if category == 'success' %}bg-green-100 text-green-700 border border-green-200
+                        {% elif category == 'danger' %}bg-red-100 text-red-700 border border-red-200
+                        {% elif category == 'warning' %}bg-yellow-100 text-yellow-700 border border-yellow-200
+                        {% else %}bg-blue-100 text-blue-700 border border-blue-200{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="container mx-auto px-4 py-6 flex-grow">
+    {% block content %}{% endblock %}
+</div>
+
+<footer class="bg-gray-800 text-white py-4 mt-auto">
+    <div class="container mx-auto px-4 text-center">
+        <p>&copy; 2025 Fyers Trading Dashboard</p>
+    </div>
+</footer>
+<script>
+    // Global error handling and utility functions
+    document.addEventListener('DOMContentLoaded', function() {
+        // Global error handler for fetch requests
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+
+            if (event.reason && event.reason.name === 'AbortError') {
+                // Ignore aborted requests
+                return;
+            }
+
+            DashboardUtils.showNotification(
+                'An unexpected error occurred. Please try again.',
+                'error'
+            );
+        });
+
+        // Global error handler for JavaScript errors
+        window.addEventListener('error', function(event) {
+            console.error('JavaScript error:', event.error);
+
+            // Don't show notifications for script loading errors
+            if (event.filename && event.filename.includes('.js')) {
+                return;
+            }
+
+            DashboardUtils.showNotification(
+                'A technical error occurred. Please refresh the page.',
+                'error'
+            );
+        });
+
+        // Network status monitoring
+        window.addEventListener('online', function() {
+            DashboardUtils.showNotification('Connection restored', 'success', 3000);
+        });
+
+        window.addEventListener('offline', function() {
+            DashboardUtils.showNotification('Connection lost. Some features may not work.', 'warning', 0);
+        });
+
+        // Auto-refresh token before expiry (if applicable)
+        const tokenExpiryStr = '{{ session.get("token_expiry") }}';
+        if (tokenExpiryStr) {
+            const tokenExpiry = new Date(tokenExpiryStr);
+            const now = new Date();
+            const timeUntilExpiry = tokenExpiry.getTime() - now.getTime();
+
+            // Warn 10 minutes before expiry
+            if (timeUntilExpiry > 0 && timeUntilExpiry < 10 * 60 * 1000) {
+                setTimeout(() => {
+                    DashboardUtils.showNotification(
+                        'Your session will expire soon. Please save your work.',
+                        'warning',
+                        0
+                    );
+                }, Math.max(0, timeUntilExpiry - 10 * 60 * 1000));
+            }
+        }
+
+        // Market status indicator
+        const marketStatus = DashboardUtils.getMarketStatus();
+        const marketIndicator = document.getElementById('market-status');
+        if (marketIndicator) {
+            marketIndicator.textContent = marketStatus.message;
+            marketIndicator.className = `text-sm ${
+                marketStatus.status === 'open' ? 'text-green-600' :
+                marketStatus.status === 'pre-open' ? 'text-yellow-600' :
+                'text-red-600'
+            }`;
+        }
+    });
+
+    // Enhanced form validation
+    function validateForm(formElement) {
+        const inputs = formElement.querySelectorAll('input[required], select[required], textarea[required]');
+        let isValid = true;
+
+        inputs.forEach(input => {
+            const value = input.value.trim();
+            const errorElement = input.parentElement.querySelector('.error-message');
+
+            // Remove existing error
+            if (errorElement) {
+                errorElement.remove();
+            }
+
+            input.classList.remove('border-red-500');
+
+            if (!value) {
+                isValid = false;
+                input.classList.add('border-red-500');
+
+                const error = document.createElement('p');
+                error.className = 'error-message text-sm text-red-600 mt-1';
+                error.textContent = `${input.getAttribute('data-label') || 'This field'} is required`;
+                input.parentElement.appendChild(error);
+            }
+
+            // Email validation
+            if (input.type === 'email' && value) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(value)) {
+                    isValid = false;
+                    input.classList.add('border-red-500');
+
+                    const error = document.createElement('p');
+                    error.className = 'error-message text-sm text-red-600 mt-1';
+                    error.textContent = 'Please enter a valid email address';
+                    input.parentElement.appendChild(error);
+                }
+            }
+        });
+
+        return isValid;
+    }
+
+    // Add form validation to all forms
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            if (!validateForm(this)) {
+                e.preventDefault();
+                DashboardUtils.showNotification('Please fix the errors below', 'error');
+            }
+        });
+    });
+</script>
+</body>
+</html>

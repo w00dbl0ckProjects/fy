@@ -1,0 +1,21 @@
+<!-- templates/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center min-h-[70vh]">
+    <div class="max-w-3xl text-center">
+        <h1 class="text-4xl font-bold mb-6">Welcome to Fyers Trading Dashboard</h1>
+        <p class="text-xl text-gray-600 mb-10">
+            Connect your Fyers account and access your portfolio, orders, and market data in one place.
+        </p>
+        <div class="flex flex-wrap justify-center gap-4">
+            <a href="/register" class="bg-blue-600 hover:bg-blue-700 text-white py-3 px-8 rounded-lg text-lg font-semibold transition duration-200">
+                Get Started
+            </a>
+            <a href="/login" class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 px-8 rounded-lg text-lg font-semibold transition duration-200">
+                Login
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+<!-- templates/edit_watchlist.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">Edit Watchlist</h1>
+            <a href="{{ url_for('watchlist_detail', watchlist_id=watchlist.id) }}" class="text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </a>
+        </div>
+
+        <form method="post" action="{{ url_for('edit_watchlist', watchlist_id=watchlist.id) }}" class="space-y-6">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Watchlist Name</label>
+                <input type="text" id="name" name="name" required maxlength="100" value="{{ watchlist.name }}"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                <textarea id="description" name="description" rows="3" maxlength="255"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">{{ watchlist.description or '' }}</textarea>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <a href="{{ url_for('watchlist_detail', watchlist_id=watchlist.id) }}"
+                   class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded">
+                    Update Watchlist
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-8 pt-6 border-t border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Danger Zone</h3>
+            <div class="bg-red-50 border border-red-200 rounded-md p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">Delete Watchlist</h3>
+                        <div class="mt-2 text-sm text-red-700">
+                            <p>Once you delete a watchlist, there is no going back. All instruments in this watchlist will be removed.</p>
+                        </div>
+                        <div class="mt-4">
+                            <form method="post" action="{{ url_for('delete_watchlist', watchlist_id=watchlist.id) }}"
+                                  onsubmit="return confirm('Are you absolutely sure? This action cannot be undone.')">
+                                <button type="submit"
+                                        class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded text-sm">
+                                    Delete Watchlist
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

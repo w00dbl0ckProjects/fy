@@ -1,0 +1,137 @@
+<!-- templates/watchlist_detail.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold">{{ watchlist.name }}</h1>
+                {% if watchlist.description %}
+                <p class="text-gray-600 mt-1">{{ watchlist.description }}</p>
+                {% endif %}
+            </div>
+            <div class="flex space-x-2">
+                <a href="{{ url_for('add_to_watchlist', watchlist_id=watchlist.id) }}"
+                   class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded">
+                    Add Instrument
+                </a>
+                <a href="{{ url_for('watchlist_live', watchlist_id=watchlist.id) }}"
+                   class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded">
+                    Live View
+                </a>
+                <a href="{{ url_for('edit_watchlist', watchlist_id=watchlist.id) }}"
+                   class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
+                    Edit
+                </a>
+                <a href="{{ url_for('watchlists') }}"
+                   class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded">
+                    Back to Watchlists
+                </a>
+            </div>
+        </div>
+
+        {% if items %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exchange</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">LTP</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Change</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Volume</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item_data in items %}
+                    {% set item = item_data.item %}
+                    {% set instrument = item_data.instrument %}
+                    {% set market_data = item_data.market_data %}
+
+                    {% if instrument %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ instrument.symbol }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ instrument.name or '-' }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">{{ instrument.exchange }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            {% if market_data and market_data.v and market_data.v.ltp is defined %}
+                            <div class="text-sm font-semibold text-gray-900">₹{{ market_data.v.ltp }}</div>
+                            {% else %}
+                            <div class="text-sm text-gray-500">-</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            {% if market_data and market_data.v and market_data.v.ch is defined %}
+                            <div class="text-sm font-semibold {% if market_data.v.ch > 0 %}text-green-600{% elif market_data.v.ch < 0 %}text-red-600{% else %}text-gray-900{% endif %}">
+                                {{ market_data.v.ch }} ({{ market_data.v.chp }}%)
+                            </div>
+                            {% else %}
+                            <div class="text-sm text-gray-500">-</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            {% if market_data and market_data.v and market_data.v.volume is defined %}
+                            <div class="text-sm text-gray-900">{{ market_data.v.volume }}</div>
+                            {% else %}
+                            <div class="text-sm text-gray-500">-</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="flex justify-center space-x-2">
+                                <a href="{{ url_for('view_instrument', fy_token=instrument.fy_token) }}"
+                                   class="text-blue-600 hover:text-blue-800 text-sm">View</a>
+                                <span class="text-gray-300">|</span>
+                                <a href="{{ url_for('market', fy_token=instrument.fy_token) }}"
+                                   class="text-green-600 hover:text-green-800 text-sm">Chart</a>
+                                <span class="text-gray-300">|</span>
+                                <form method="post" action="{{ url_for('remove_from_watchlist', watchlist_id=watchlist.id, item_id=item.id) }}"
+                                      class="inline" onsubmit="return confirm('Remove this instrument from watchlist?')">
+                                    <button type="submit" class="text-red-600 hover:text-red-800 text-sm">Remove</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-sm text-red-500">
+                            Missing instrument data for item {{ item.id }}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-4 text-sm text-gray-500">
+            <p>Last updated: {{ watchlist.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+            {% if items %}
+            <p>Total instruments: {{ items|length }}</p>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="text-center py-16">
+            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">No Instruments in Watchlist</h3>
+            <p class="text-gray-500 mb-6">Add instruments to start tracking their performance.</p>
+            <a href="{{ url_for('add_to_watchlist', watchlist_id=watchlist.id) }}"
+               class="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded">
+                Add First Instrument
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
